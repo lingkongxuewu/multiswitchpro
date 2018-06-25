@@ -1,0 +1,213 @@
+C51 COMPILER V9.01   SEND                                                                  05/22/2018 09:30:09 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE SEND
+OBJECT MODULE PLACED IN .\obj\Send.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE scr\Send.c BROWSE DEBUG OBJECTEXTEND PRINT(.\list\Send.lst) OBJECT(.\obj\Se
+                    -nd.obj)
+
+line level    source
+
+   1          /*--------------------------------文*件*信*息-----------------------------
+   2          * 文件名：  Send.c
+   3          * 版　本：  v1.0
+   4          * 描  述：  100T双轴 整合后的版本
+   5          * 创建人：  
+   6          * 日  期：  
+   7          --------------------------------------------------------------------------
+   8          *当前版本:      v1.0
+   9          *修 改 人:
+  10          *日　  期:
+  11          ----------------------------------修改履历--------------------------------
+  12          1、
+  13          2、
+  14          3、
+  15          4、
+  16          ------------------------------------------------------------------------*/
+  17          #define   __SEND_C__
+  18          #include  "_Include.h"
+  19          
+  20          static void Send_RDeal ( char* buf,U8 n);
+  21          static void Send_CDeal ( char* buf,U8 n);
+  22          static void Send_SDeal ( char* buf,U8 n);
+  23          
+  24          
+  25          
+  26          code U16  SendSpeed[]={3990,943,462,298,223,168,146,119,103,85};
+  27                                                                  // 1/4   1   2   3   4   5   6   7   8   9
+  28                                                                  
+  29              //                          0    1     2     3      4      5      6      7      8      9      
+  30              code U32 Braud[10] = { 1200, 2400, 4800, 9600, 14400, 19200, 38400, 56000, 57600, 115200 };
+  31          
+  32          
+  33          //***********************************************************************/
+  34          // *功    能：
+  35          // *入    口：CommTimer时间到 ，CommRxFlag有接收完成标志
+  36          // *出    口：
+  37          // *备    注：
+  38          // *函数性质：
+  39          //***********************************************************************/
+  40          void Send_TimeProc (void)
+  41          {   static xdata U8 rx_buf[COMM_RX_BUF_SIZE];
+  42   1          static U8* ptr;
+  43   1          static U8 xdata i;
+  44   1          static U8 xdata err;
+  45   1          static U8 xdata cmd;
+  46   1      
+  47   1      //    if(COMM_TRAN==Comm_StateGet()) return;             //COMM_TRAN==0，CommTimer减到0返回1进入COM处理，CommTimer减
+             -没到0返回0
+  48   1          if(CommRxFlag==0)   return;                                  //接收标志
+  49   1          CommRxFlag = 0;
+  50   1          ptr=rx_buf;                                                                  
+  51   1          for(i=0;i<COMM_RX_BUF_SIZE;i++)
+  52   1          {   
+  53   2                      *ptr++=Comm_GetChar(&err);                                //将接收缓冲区的数据 取出存入 rx_buf
+C51 COMPILER V9.01   SEND                                                                  05/22/2018 09:30:09 PAGE 2   
+
+  54   2              if(err==COMM_RX_EPT)                                     //COMM_RX_EPT ==1      取完标志
+  55   2              break;
+  56   2          }
+  57   1          if(i<3)
+  58   1          {
+  59   2              return;
+  60   2          }
+  61   1          if((0x0D!=rx_buf[i-2])||(0x0A!=rx_buf[i-1]))         //判断后两位数据是否是回车换行
+  62   1          return;
+  63   1      
+  64   1      
+  65   1              cmd=rx_buf[0];
+  66   1          switch(cmd)
+  67   1          { 
+  68   2                case 'r': Send_RDeal(rx_buf,i);
+  69   2                      break;
+  70   2            case 's': Send_SDeal(rx_buf,i);
+  71   2                      break;
+  72   2          }
+  73   1      }
+  74          //***********************************************************************/
+  75          // *功    能：
+  76          // *入    口：
+  77          // *出    口：
+  78          // *备    注：
+  79          // *函数性质：
+  80          //***********************************************************************/
+  81          static void Send_RDeal ( char* buf,U8 n)
+  82          {   
+  83   1      //      U8 xdata data_8u;
+  84   1      
+  85   1              if(0==strncmp(buf,"rd m,",4))
+  86   1              {
+  87   2                      if(n!=6)return;
+  88   2      //              data_8u=Sub_Str2Int8u(&buf[8]);
+  89   2                      Comm_PutStr("yang ",5);
+  90   2                      TI0 =1;
+  91   2              }
+  92   1      
+  93   1      //              if(n!=15)return;
+  94   1      //              data_8u=Sub_Str2Int8u(&buf[8]);
+  95   1      
+  96   1      }
+  97          //***********************************************************************/
+  98          // *功    能：
+  99          // *入    口：
+ 100          // *出    口：
+ 101          // *备    注：
+ 102          // *函数性质：
+ 103          //***********************************************************************/
+ 104          static void Send_SDeal ( char* buf,U8 n)
+ 105          {   
+ 106   1              U8 xdata data_8u,temp;
+ 107   1              U8 xdata arr[2]={0};
+ 108   1      
+ 109   1              if(0==strncmp(buf,"set on,",7))
+ 110   1              {
+ 111   2                 if(n!=11)return;
+ 112   2                 data_8u = Sub_Str2Int8u(&buf[7]);
+ 113   2                 switch(Part_pin)
+ 114   2                 {
+ 115   3                              case 1:
+C51 COMPILER V9.01   SEND                                                                  05/22/2018 09:30:09 PAGE 3   
+
+ 116   3                                      byte1.U32 = pow(2,data_8u);
+ 117   3                                      One_Driver_595SendByte(byte1.U8);
+ 118   3                                      Comm_PutStr("set on,",7);
+ 119   3                                      Comm_PutStr(&buf[7],2);
+ 120   3                                      Sub_SendOk();
+ 121   3                              break;
+ 122   3                              case 2:
+ 123   3                                      if(data_8u<32)
+ 124   3                                      {
+ 125   4                                              byte1.U32 = pow(2,data_8u);
+ 126   4                                              One_Driver_595SendByte(byte1.U8);
+ 127   4                                      }
+ 128   3                                      else
+ 129   3                                      {
+ 130   4                                              temp = data_8u -32;
+ 131   4                                              byte2.U32 = pow(2,temp);
+ 132   4                                              Two_Driver_595SendByte(byte2.U8);
+ 133   4                                      }
+ 134   3                                      Comm_PutStr("set on,",7);
+ 135   3                                      Comm_PutStr(&buf[7],2);
+ 136   3                                      Sub_SendOk();
+ 137   3                              break;
+ 138   3                              case 3:
+ 139   3                                      if(data_8u<32)
+ 140   3                                      {
+ 141   4                                              byte1.U32 = pow(2,data_8u);
+ 142   4                                              One_Driver_595SendByte(byte1.U8);
+ 143   4                                      }
+ 144   3                                      else if(data_8u>=32&&data_8u<64)
+ 145   3                                      {
+ 146   4                                              temp = data_8u -32;
+ 147   4                                              byte2.U32 = pow(2,temp);
+ 148   4                                              Two_Driver_595SendByte(byte2.U8);
+ 149   4                                      }
+ 150   3                                      else
+ 151   3                                      {
+ 152   4                                              temp = data_8u -64;
+ 153   4                                              byte3.U32 = pow(2,temp);
+ 154   4                                              Three_Driver_595SendByte(byte3.U8);
+ 155   4                                      }
+ 156   3      
+ 157   3                                      Comm_PutStr("set on,",7);
+ 158   3                                      Comm_PutStr(&buf[7],2);
+ 159   3                                      Sub_SendOk();
+ 160   3      
+ 161   3                              break;
+ 162   3                              default:
+ 163   3                                      Sub_SendErr();
+ 164   3      
+ 165   3                 }
+ 166   2      
+ 167   2              }
+ 168   1      
+ 169   1              else if(0==strncmp(buf,"set part,",9))
+ 170   1              {
+ 171   2                      if(n!=13)return;
+ 172   2                      data_8u = Sub_Str2Int8u(&buf[9]);
+ 173   2                      Part_pin = data_8u;
+ 174   2      
+ 175   2                      Comm_PutStr("set part,",9);
+ 176   2                      Comm_PutStr(&buf[9],2);
+ 177   2                      Sub_SendOk();
+C51 COMPILER V9.01   SEND                                                                  05/22/2018 09:30:09 PAGE 4   
+
+ 178   2              }
+ 179   1      }
+ 180          
+ 181          
+ 182          //***********************************************************************/
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    741    ----
+   CONSTANT SIZE    =     92    ----
+   XDATA SIZE       =    204       4
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,63 @@
+C51 COMPILER V9.01   INIT                                                                  05/22/2018 09:30:08 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE INIT
+OBJECT MODULE PLACED IN .\obj\init.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE scr\init.c BROWSE DEBUG OBJECTEXTEND PRINT(.\list\init.lst) OBJECT(.\obj\in
+                    -it.obj)
+
+line level    source
+
+   1          #include "_Include.h"
+   2          
+   3          void init_port(void)
+   4          {
+   5   1              U8 SfrPage = SFRPAGE;
+   6   1              SFRPAGE = CONFIG_PAGE;
+   7   1              
+   8   1              P0SKIP  |= 0x0F;        //skip P0.0 P0.1 p0.2 p0.3 
+   9   1              P0MDIN  &= ~0x01;   //set P0.0 analog input(VREF)
+  10   1              P0MDOUT |= 0x10;    //set P0.4 push-pull
+  11   1              P1MDOUT |= 0xFF;    //set P1.0...P1.7 push-pull
+  12   1              P2MDOUT |= 0x0F;    //set P2.0...P2.3 push-pull
+  13   1              XBR0 = 0x01;            //enable UART I/O
+  14   1              XBR2 = 0x40;            //enable crossbar
+  15   1              SFRPAGE = SfrPage;
+  16   1      }
+  17          
+  18          static void init_clk(void)
+  19          {
+  20   1              U8 SfrPage_ = SFRPAGE;
+  21   1              SFRPAGE = CONFIG_PAGE;
+  22   1              OSCICN |= 0xC7;         //24M                                     
+  23   1      
+  24   1              CLKSEL = 0X00;                          //      选择内部振荡器作为系统时钟
+  25   1              while((OSCICN & 0x10) == 0);//  等待时钟稳定
+  26   1              VDM0CN = 0xA0;                          //      Enable VDD monitor and high threshold
+  27   1              RSTSRC = 0x02;                          //      Enable VDD monitor as a reset source
+  28   1      
+  29   1              SFRPAGE = SfrPage_;     
+  30   1      }
+  31          
+  32          void init_sys(void)
+  33          {
+  34   1              init_clk();
+  35   1              init_port();
+  36   1              Comm_HardwareInit();
+  37   1              Comm_SoftwareInit();
+  38   1              Timer2_Init();
+  39   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     69    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

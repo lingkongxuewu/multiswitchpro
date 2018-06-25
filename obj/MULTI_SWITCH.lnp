@@ -1,0 +1,11 @@
+".\obj\STARTUP.obj",
+".\obj\74HC595.obj",
+".\obj\com.obj",
+".\obj\main.obj",
+".\obj\init.obj",
+".\obj\Delay.obj",
+".\obj\Send.obj",
+".\obj\Sub.obj",
+".\obj\Timer.obj" 
+TO ".\obj\MULTI_SWITCH" 
+PRINT(".\list\MULTI_SWITCH.m51") RAMSIZE(256) 

@@ -1,0 +1,305 @@
+C51 COMPILER V9.01   COM                                                                   05/22/2018 09:30:08 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE COM
+OBJECT MODULE PLACED IN .\obj\com.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE scr\com.c BROWSE DEBUG OBJECTEXTEND PRINT(.\list\com.lst) OBJECT(.\obj\com.
+                    -obj)
+
+line level    source
+
+   1          /*--------------------------------文*件*信*息-----------------------------
+   2          * 文件名：  Comm.c
+   3          * 版　本：  v1.0
+   4          * 创建人：   
+   5          * 日  期：   
+   6          #define   __COM_C__
+   7          
+   8          //***********************************************************************/
+   9          
+  10          #define   __COMM_C__
+  11          #include "_Include.h"
+  12          /*-----变量定义-------------------*/
+  13          
+  14          static U16  xdata       CommTimer;
+  15          
+  16          //***********************************************************************/
+  17          // *功    能：
+  18          // *入    口：
+  19          // *出    口：
+  20          // *备    注：
+  21          // *函数性质：
+  22          //***********************************************************************/
+  23          void Comm_Isr (void) interrupt INTERRUPT_UART0
+  24          {       
+  25   1              U8 temp;
+  26   1              U8 err;
+  27   1                      
+  28   1              if(TI0==1)                                                              // Check if transmit flag is set
+  29   1              {       
+  30   2                      TI0=0;                                                          // Clear interrupt flag
+  31   2                      temp=Comm_GetTxChar(&err);
+  32   2                      if(COMM_TX_EPT!=err)
+  33   2                      {       
+  34   3                              SBUF0 = temp;                                   // Transmit to Hyperterminal
+  35   3                              CommTxFlag = 1;
+  36   3                      }
+  37   2                      else
+  38   2                      {       
+  39   3      //                      Comm_SendStop();
+  40   3                              CommTxFlag = 0;
+  41   3                      }
+  42   2      
+  43   2              }
+  44   1      
+  45   1              if(RI0==1)
+  46   1              {
+  47   2                      RI0=0;                                                          //Clear interrupt flag
+  48   2                      temp=SBUF0;                                                     // Read a character from UART   
+  49   2                      #ifdef  COMM_485
+                              if(CommTxFlag == 0)                                     
+                              #endif
+  52   2                      {
+  53   3                              Comm_PutRxChar(temp);
+  54   3                              Comm_TimerInit();
+C51 COMPILER V9.01   COM                                                                   05/22/2018 09:30:08 PAGE 2   
+
+  55   3                      }
+  56   2              }
+  57   1              
+  58   1              if(OVR0 == 1)
+  59   1              {       
+  60   2                      OVR0 = 0;
+  61   2              }
+  62   1      }
+  63          //***********************************************************************/
+  64          void Comm_HardwareInit (void)
+  65          {       
+  66   1              U8 SfrPage_ = SFRPAGE;  
+  67   1              
+  68   1              SFRPAGE = CONFIG_PAGE;
+  69   1              SCON0 = 0x10;                                                     
+  70   1              // Baud Rate = [BRG Clock / (65536 - (SBRLH0:SBRLL0))] x 1/2 x 1/Prescaler
+  71   1      
+  72   1              #if     ((SYSCLK / BAUDRATE / 2 / 0xFFFF) < 1)
+  73   1                              SBRL0 = -(SYSCLK / BAUDRATE / 2);
+  74   1                              SBCON0 |= 0x03;                                          // Set prescaler to 1*/
+  75   1              #elif ((SYSCLK / BAUDRATE / 2 / 0xFFFF) < 4)
+                                      SBRL0 = -(SYSCLK / BAUDRATE / 2 / 4);
+                                      SBCON0 &= ~0x03;
+                                      SBCON0 |= 0x01;                                          // Set prescaler to 4
+                      #elif ((SYSCLK / BAUDRATE / 2 / 0xFFFF) < 12)
+                                      SBRL0 = -(SYSCLK / BAUDRATE / 2 / 12);
+                                      SBCON0 &= ~0x03;                                          // Set prescaler to 12
+                      #else
+                                      SBRL0 = -(SYSCLK / BAUDRATE / 2 / 48);
+                                      SBCON0 &= ~0x03;
+                                      SBCON0 |= 0x02;                                          // Set prescaler to 48
+                      #endif
+  87   1              
+  88   1              IP |= 0x10;                                                                 // Make UART high priority
+  89   1              ES0 = 1;                                                                    // Enable UART0 interrupts
+  90   1                      
+  91   1              SBCON0 |= 0x40;                                                     // Enable baud rate generator
+  92   1              TI0 = 1;                                                                        // Indicate TX0 ready
+  93   1      //      PS0 = 1;
+  94   1              SFRPAGE = SfrPage_;
+  95   1      }
+  96          //***********************************************************************/
+  97          void Comm_SoftwareInit (void)
+  98          {       
+  99   1          COMM_RING_BUF *p_buf=&CommBuf;
+ 100   1                      
+ 101   1              p_buf->RingBufRxCtr= 0;
+ 102   1              p_buf->RingBufRxInPtr  = &p_buf->RingBufRx[0];
+ 103   1              p_buf->RingBufRxOutPtr = &p_buf->RingBufRx[0];
+ 104   1              p_buf->RingBufTxCtr= 0;
+ 105   1              p_buf->RingBufTxInPtr  = &p_buf->RingBufTx[0];
+ 106   1              p_buf->RingBufTxOutPtr = &p_buf->RingBufTx[0];  
+ 107   1      }
+ 108          //***********************************************************************/
+ 109          // *功    能：
+ 110          // *入    口：
+ 111          // *出    口：
+ 112          // *备    注：
+ 113          // *函数性质：
+ 114          void Comm_SendSta (void)
+ 115          {       
+ 116   1              TI0=1;
+C51 COMPILER V9.01   COM                                                                   05/22/2018 09:30:08 PAGE 3   
+
+ 117   1      }
+ 118          //***********************************************************************/
+ 119          //void Comm_SendStop (void)
+ 120          //{
+ 121          //      UART_R();
+ 122          //}
+ 123          //***********************************************************************/
+ 124          //***********************************************************************/
+ 125          //***********************************************************************/
+ 126          //***********************************************************************/
+ 127          // *功    能： 获取com数据区将要TX的数据
+ 128          // *入    口： RingBufTxCtr 存储的数据量，RingBufTxOutPtr 输出数据的指针
+ 129          // *出    口：
+ 130          // *备    注：
+ 131          // *函数性质：
+ 132          //***********************************************************************/
+ 133          U8 Comm_GetTxChar (U8 *err)
+ 134          {       
+ 135   1              COMM_RING_BUF *p_buf=&CommBuf;
+ 136   1              U8 c;
+ 137   1              
+ 138   1              ISR_DIS();
+ 139   1              if (p_buf->RingBufTxCtr > 0)
+ 140   1              {       p_buf->RingBufTxCtr--;
+ 141   2                      c = *p_buf->RingBufTxOutPtr++;
+ 142   2                      if (p_buf->RingBufTxOutPtr == &p_buf->RingBufTx[COMM_TX_BUF_SIZE])
+ 143   2                      {       p_buf->RingBufTxOutPtr = &p_buf->RingBufTx[0];
+ 144   3                      }
+ 145   2                      *err = COMM_NO_ERR;
+ 146   2                      ISR_EN();
+ 147   2                      return (c);
+ 148   2              }
+ 149   1              else
+ 150   1              {       *err = COMM_TX_EPT;
+ 151   2                      ISR_EN();
+ 152   2                      return (0);
+ 153   2              }
+ 154   1      }
+ 155          //***********************************************************************/
+ 156          //***********************************************************************/
+ 157          // *功    能： 将要TX的数据填入com数据区
+ 158          // *入    口： RingBufTxCtr 存储的数据量，RingBufTxInPtr 输入数据的指针
+ 159          // *出    口：
+ 160          // *备    注：
+ 161          // *函数性质：
+ 162          //***********************************************************************/
+ 163          U8 Comm_PutChar (U8 c)
+ 164          {       
+ 165   1              COMM_RING_BUF *p_buf=&CommBuf;
+ 166   1              
+ 167   1              ISR_DIS();
+ 168   1              if (p_buf->RingBufTxCtr < COMM_TX_BUF_SIZE)
+ 169   1              {       p_buf->RingBufTxCtr++;
+ 170   2                      *p_buf->RingBufTxInPtr++ = c;
+ 171   2                      if (p_buf->RingBufTxInPtr == &p_buf->RingBufTx[COMM_TX_BUF_SIZE])
+ 172   2                      {       p_buf->RingBufTxInPtr = &p_buf->RingBufTx[0];
+ 173   3                      }
+ 174   2                      ISR_EN();
+ 175   2                      return (COMM_NO_ERR);
+ 176   2              }
+ 177   1              else
+ 178   1              {       
+C51 COMPILER V9.01   COM                                                                   05/22/2018 09:30:08 PAGE 4   
+
+ 179   2                      ISR_EN();
+ 180   2                      return (COMM_TX_FULL);
+ 181   2              }
+ 182   1      }
+ 183          
+ 184          
+ 185          
+ 186          //***********************************************************************/
+ 187          //***********************************************************************/
+ 188          // *功    能： 将接收的数据填入com数据区
+ 189          // *入    口： RingBufRxCtr 存储的数据量，RingBufRxInPtr 填入数据的指针
+ 190          // *出    口：
+ 191          // *备    注：
+ 192          // *函数性质：
+ 193          //***********************************************************************/
+ 194          
+ 195          void Comm_PutRxChar (U8 c)
+ 196          {       
+ 197   1              COMM_RING_BUF *p_buf=&CommBuf;
+ 198   1              
+ 199   1              ISR_DIS();
+ 200   1              if (p_buf->RingBufRxCtr < COMM_RX_BUF_SIZE)
+ 201   1              {       p_buf->RingBufRxCtr++;
+ 202   2                      *p_buf->RingBufRxInPtr++ = c;
+ 203   2                      if (p_buf->RingBufRxInPtr == &p_buf->RingBufRx[COMM_RX_BUF_SIZE])
+ 204   2                      {       p_buf->RingBufRxInPtr = &p_buf->RingBufRx[0];
+ 205   3                      }
+ 206   2              }
+ 207   1              ISR_EN();
+ 208   1      }
+ 209          //***********************************************************************/
+ 210          // *功    能： 将接收的数据取出com数据区
+ 211          // *入    口： RingBufRxCtr 存储的数据量，RingBufRxInPtr 填入数据的指针
+ 212          // *出    口：
+ 213          // *备    注：
+ 214          // *函数性质：
+ 215          //***********************************************************************/
+ 216          U8 Comm_GetChar (U8 *err)
+ 217          {       
+ 218   1              COMM_RING_BUF *p_buf=&CommBuf;
+ 219   1              U8 c;
+ 220   1              
+ 221   1              ISR_DIS();
+ 222   1              if (p_buf->RingBufRxCtr > 0)
+ 223   1              {       p_buf->RingBufRxCtr--;
+ 224   2                      c = *p_buf->RingBufRxOutPtr++;
+ 225   2                      if (p_buf->RingBufRxOutPtr == &p_buf->RingBufRx[COMM_RX_BUF_SIZE])
+ 226   2                      {       p_buf->RingBufRxOutPtr = &p_buf->RingBufRx[0];
+ 227   3                      }
+ 228   2                      *err = COMM_NO_ERR;
+ 229   2                      ISR_EN();
+ 230   2                      return (c);
+ 231   2              }
+ 232   1              else
+ 233   1              {       *err = COMM_RX_EPT;
+ 234   2                      ISR_EN();
+ 235   2                      return (0);
+ 236   2              }
+ 237   1      }
+ 238          
+ 239          //***********************************************************************/
+ 240          void Comm_PutStr (U8* ptr,U8 n)
+C51 COMPILER V9.01   COM                                                                   05/22/2018 09:30:08 PAGE 5   
+
+ 241          {       
+ 242   1              U8 i;
+ 243   1              
+ 244   1              for(i=0;i<n;i++)
+ 245   1              {       
+ 246   2                      Comm_PutChar(*ptr++);
+ 247   2              }
+ 248   1      }
+ 249          
+ 250          
+ 251          //***********************************************************************/
+ 252          // *功    能：
+ 253          // *入    口：
+ 254          // *出    口：
+ 255          // *备    注：
+ 256          // *函数性质：
+ 257          //***********************************************************************/
+ 258          void Comm_TimerInit (void)
+ 259          {
+ 260   1              CommTimer=10;                      //中断接收数据完毕一帧数据后，调用
+ 261   1      }
+ 262          //***********************************************************************/
+ 263          void Comm_TimerProc (void)
+ 264          {
+ 265   1              if( CommTimer>0 ) 
+ 266   1              {   
+ 267   2              if(--CommTimer==0) 
+ 268   2              CommRxFlag=1;         //liuliu     2013-02-22
+ 269   2              }
+ 270   1      }
+ 271          //***********************************************************************/
+ 272          
+ 273          //***********************************************************************/
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    962    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    418    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
