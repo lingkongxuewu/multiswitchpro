@@ -54,6 +54,7 @@ void Send_TimeProc (void)
         if(err==COMM_RX_EPT)					 //COMM_RX_EPT ==1	取完标志
         break;
     }
+
     if(i<3)
     {
         return;
@@ -82,12 +83,12 @@ static void Send_RDeal ( char* buf,U8 n)
 {   
 //	U8 xdata data_8u;
 
-	if(0==strncmp(buf,"rd m,",4))
+	if(0==strncmp(buf,"rd m",4))
 	{
 		if(n!=6)return;
 //		data_8u=Sub_Str2Int8u(&buf[8]);
-		Comm_PutStr("yang ",5);
-		TI0 =1;
+		Comm_PutStr("yang",4);
+		Comm_SendSta();
 	}
 
 //		if(n!=15)return;
@@ -103,79 +104,46 @@ static void Send_RDeal ( char* buf,U8 n)
 //***********************************************************************/
 static void Send_SDeal ( char* buf,U8 n)
 {   
-	U8 xdata data_8u,temp;
+	U8 xdata data_8u,temp,temp1;
 	U8 xdata arr[2]={0};
+	byte1.U32 = 0;
 
 	if(0==strncmp(buf,"set on,",7))
 	{
-	   if(n!=11)return;
-	   data_8u = Sub_Str2Int8u(&buf[7]);
-	   switch(Part_pin)
-	   {
-	   		case 1:
-				byte1.U32 = pow(2,data_8u);
-				One_Driver_595SendByte(byte1.U8);
-				Comm_PutStr("set on,",7);
-				Comm_PutStr(&buf[7],2);
-				Sub_SendOk();
-			break;
-			case 2:
-				if(data_8u<32)
-				{
-					byte1.U32 = pow(2,data_8u);
-					One_Driver_595SendByte(byte1.U8);
-				}
-				else
-				{
-					temp = data_8u -32;
-					byte2.U32 = pow(2,temp);
-					Two_Driver_595SendByte(byte2.U8);
-				}
-				Comm_PutStr("set on,",7);
-				Comm_PutStr(&buf[7],2);
-				Sub_SendOk();
-			break;
-			case 3:
-				if(data_8u<32)
-				{
-					byte1.U32 = pow(2,data_8u);
-					One_Driver_595SendByte(byte1.U8);
-				}
-				else if(data_8u>=32&&data_8u<64)
-				{
-					temp = data_8u -32;
-					byte2.U32 = pow(2,temp);
-					Two_Driver_595SendByte(byte2.U8);
-				}
-				else
-				{
-					temp = data_8u -64;
-					byte3.U32 = pow(2,temp);
-					Three_Driver_595SendByte(byte3.U8);
-				}
+		if(n!=11)return;
+		data_8u = Sub_Str2Int8u(&buf[7]);
+		if(data_8u == 0)
+		return;
+		data_8u-=1;
 
-				Comm_PutStr("set on,",7);
-				Comm_PutStr(&buf[7],2);
-				Sub_SendOk();
-
-			break;
-			default:
-				Sub_SendErr();
-
-	   }
-
-	}
-
-	else if(0==strncmp(buf,"set part,",9))
-	{
-		if(n!=13)return;
-		data_8u = Sub_Str2Int8u(&buf[9]);
-		Part_pin = data_8u;
-
-		Comm_PutStr("set part,",9);
-		Comm_PutStr(&buf[9],2);
+		if(data_8u<32)
+		{
+			SendTo595OneGroup(data_8u);
+		}
+		else if(data_8u>=32&&data_8u<64)
+		{
+			temp = data_8u -32;
+			SendTo595TwoGroup(temp);
+		}
+		else if(data_8u>=64 && data_8u<96)
+		{
+			temp1 = data_8u -64;
+			SendTo595ThreeGroup(temp1);
+		}
+		else
+		{
+			Comm_PutStr("error!",6);
+			Comm_SendSta();
+		}
+		
+		Comm_PutStr("set on,",7);
+		Comm_PutStr(&buf[7],2);
 		Sub_SendOk();
+
 	}
+	else
+		Sub_SendErr();
+
 }
 
 

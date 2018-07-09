@@ -24,7 +24,6 @@ void Two_Driver_595SendByte(U8* temp);
 void Three_Driver_595SendByte(U8* temp);
 
 
-extern U8 Part_pin;
 extern union UU32 byte1,byte2,byte3;
 
 

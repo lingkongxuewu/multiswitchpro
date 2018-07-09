@@ -29,6 +29,13 @@ static void init_clk(void)
 	SFRPAGE = SfrPage_;	
 }
 
+void init_595(void)
+{
+	SER = 1;
+	ST_CP = 1;
+	SH_CP = 1;
+}
+
 void init_sys(void)
 {
 	init_clk();
@@ -36,4 +43,5 @@ void init_sys(void)
 	Comm_HardwareInit();
 	Comm_SoftwareInit();
 	Timer2_Init();
+	init_595();
 }

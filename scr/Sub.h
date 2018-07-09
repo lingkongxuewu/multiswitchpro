@@ -64,6 +64,9 @@
 	void Sub_BufBubble2 (U16* id,S32* x,S32* y,U8 n);	  
 	U8 Sub_StralarmCheck(S32 *val,U8* str);
 	void Comm_PutNewLine(void);
+	void SendTo595OneGroup(U8 data_8u);
+	void SendTo595TwoGroup(U8 data_8u);
+	void SendTo595ThreeGroup(U8 data_8u);
 	
 	void Sub_SendMcuT(S16 temp,U16 tadc);		
 #endif
